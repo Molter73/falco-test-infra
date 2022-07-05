@@ -1,4 +1,8 @@
-SHELL := /bin/bash
+SHELL := /usr/bin/env bash
+
+cosign := $(shell command -v cosign 2>/dev/null)
+cosign_version ?= 1.9.0
+cosign_key ?= k8s://cosign/openinfra-oci-sign
 
 IMG_SLUG := test-infra
 IMG_NAME := build-libs
@@ -30,3 +34,14 @@ push-image: create-builder
 
 local-registry: create-builder
 	docker buildx build --push --platform $(ARCHS) -t "localhost:5000/$(IMG_NAME)" .
+
+sign-image: cosign
+	$(cosign) sign --key $(cosign_key) $(IMAGE)
+
+cosign: go
+	@hash cosign 2>dev/null || \
+		go install github.com/sigstore/cosign/cmd/cosign@v$(cosign_version)
+
+go:
+	@hash go 2>/dev/null || \
+		>&2 echo "Go is needed." && exit 1
